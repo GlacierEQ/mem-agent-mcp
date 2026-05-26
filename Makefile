@@ -18,17 +18,18 @@ help:
 	@echo "  2. check-uv - Check if uv is installed and install if needed"
 	@echo "  3. install - Install dependencies using uv"
 	@echo "  4. setup - Choose memory directory via GUI and save to .memory_path"
-	@echo "  5. add-filters - Add filters to .filters"
-	@echo "  6. reset-filters - Reset filters in .filters"
-	@echo "  7. run-agent - Run the agent"
-	@echo "  8. generate-mcp-json - Generate the MCP.json file"
-	@echo "  9. serve-mcp - Serve the MCP server"
-	@echo "  10. chat-cli - Run interactive CLI to chat with the agent"
-	@echo "  11. memory-wizard - Interactive wizard for connecting memory sources"  
-	@echo "  12. connect-memory - Connect memory sources using new connector system"
-	@echo "  13. convert-chatgpt - Convert ChatGPT export (legacy, use convert-memory instead)"
-	@echo "  14. serve-http - Start HTTP server for ChatGPT integration (use with ngrok)"
-	@echo "  15. serve-mcp-http - Start MCP-compliant HTTP server for ChatGPT (recommended)"
+	@echo "  5. setup-cli - Choose memory directory via CLI and save to .memory_path"
+	@echo "  6. add-filters - Add filters to .filters"
+	@echo "  7. reset-filters - Reset filters in .filters"
+	@echo "  8. run-agent - Run the agent"
+	@echo "  9. generate-mcp-json - Generate the MCP.json file"
+	@echo "  10. serve-mcp - Serve the MCP server"
+	@echo "  11. chat-cli - Run interactive CLI to chat with the agent"
+	@echo "  12. memory-wizard - Interactive wizard for connecting memory sources"  
+	@echo "  13. connect-memory - Connect memory sources using new connector system"
+	@echo "  14. convert-chatgpt - Convert ChatGPT export (legacy, use convert-memory instead)"
+	@echo "  15. serve-http - Start HTTP server for ChatGPT integration (use with ngrok)"
+	@echo "  16. serve-mcp-http - Start MCP-compliant HTTP server for ChatGPT (recommended)"
 
 # Check if uv is installed and install if needed
 check-uv:
@@ -59,12 +60,15 @@ install: check-uv
 setup:
 	uv run python mcp_server/scripts/memory_setup.py && uv run python mcp_server/scripts/setup_scripts_and_json.py && chmod +x mcp_server/scripts/start_server.sh
 
+setup-cli:
+	uv run python mcp_server/scripts/memory_setup_cli.py && uv run python mcp_server/scripts/setup_scripts_and_json.py && chmod +x mcp_server/scripts/start_server.sh
+
 add-filters:
 	uv run python mcp_server/scripts/filters.py --add
 
 reset-filters:
 	uv run python mcp_server/scripts/filters.py --reset
-
+	
 run-agent:
 	@if [ "$$(uname -s)" = "Darwin" ]; then \
 		echo "Detected macOS (Darwin). Starting MLX server via lms..."; \
@@ -85,8 +89,18 @@ run-agent:
 		lms load $$model; \
 		lms server start --port 8000; \
 	else \
-		echo "Non-macOS detected. Starting vLLM server..."; \
-		uv run vllm serve driaforall/mem-agent; \
+		ARCH="$$(uname -m)"; \
+		if [ "$$ARCH" != "x86_64" ]; then \
+			echo "Detected $${ARCH}. vLLM is not installed on this platform."; \
+			echo "Options:"; \
+			echo "  - Use OpenRouter/OpenAI backend (no local vLLM needed)."; \
+			echo "  - Run vLLM on a compatible x86_64 host and point the client at it."; \
+			echo "    Update your client host/port in agent/model.py if needed."; \
+			exit 0; \
+		else \
+			echo "Non-macOS detected. Starting vLLM server..."; \
+			uv run vllm serve driaforall/mem-agent; \
+		fi; \
 	fi
 
 generate-mcp-json:
